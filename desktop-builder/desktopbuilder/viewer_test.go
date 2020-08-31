@@ -1,47 +1,39 @@
-package hyper_test
+package desktopbuilder_test
 
 import (
-	"errors"
 	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"libvirt.org/libvirt-go"
 )
 
-func TestXMLGet(t *testing.T) {
+func TestViewerGet(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	okCaseXML, err := ioutil.ReadFile("testdata/xml_test-should_return_the_XML_correctly.xml")
-	require.NoError(err)
-
 	cases := map[string]struct {
 		PrepareDesktop func(h *hyper.Hyper) *libvirt.Domain
-		ExpectedXML    string
 		ExpectedErr    string
 	}{
-		"should return the XML correctly": {
+		"save the desktop correctly": {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
-				desktop, err := h.Get("test")
+				desktop, err := h.Start(hyper.TestMinDesktopXML(t), &hyper.StartOptions{})
 				require.NoError(err)
 
 				return desktop
 			},
-			ExpectedXML: string(okCaseXML),
 		},
-		"should return an error if there's an error getting the XML": {
+		"should return an error if there's an error suspending the desktop": {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
 				return &libvirt.Domain{}
 			},
-			ExpectedErr: libvirt.Error{
-				Code:    libvirt.ERR_INVALID_DOMAIN,
-				Domain:  libvirt.ErrorDomain(6),
-				Message: "invalid domain pointer in virDomainGetXMLDesc",
-			}.Error(),
+			ExpectedErr: "virError(Code=7, Domain=6, Message='invalid domain pointer in virDomainSave')",
 		},
 	}
 
@@ -57,20 +49,19 @@ func TestXMLGet(t *testing.T) {
 				defer desktop.Free()
 			}
 
-			xml, err := h.XMLGet(desktop)
+			dir, err := ioutil.TempDir("", "dumps")
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer os.RemoveAll(dir)
+
+			err = h.Save(desktop, filepath.Join(dir, "test.dump"))
 
 			if tc.ExpectedErr == "" {
 				assert.NoError(err)
-				assert.Equal(tc.ExpectedXML, xml)
 			} else {
-				var e libvirt.Error
-				if errors.As(err, &e) {
-					assert.Equal(tc.ExpectedErr, e.Error())
-				} else {
-					assert.EqualError(err, tc.ExpectedErr)
-				}
+				assert.EqualError(err, tc.ExpectedErr)
 			}
-
 		})
 	}
 }

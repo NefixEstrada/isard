@@ -5,8 +5,13 @@ option go_package = "github.com/isard-vdi/isard/hyper/pkg/proto";
 
 service Hyper {
     rpc DesktopStart(DesktopStartRequest) returns (DesktopStartResponse) {}
-    rpc DesktopValidate(DesktopValidateRequest) returns (DesktopValidateResponse) {}
     rpc DesktopStop(DesktopStopRequest) returns (DesktopStopResponse) {}
+    rpc DesktopState(DesktopStateRequest) returns (DesktopStateResponse) {}
+    rpc DesktopValidate(DesktopValidateRequest) returns (DesktopValidateResponse) {}
+    rpc DesktopSuspend(DesktopSuspendRequest) returns (DesktopSuspendResponse) {}
+    rpc DesktopResume(DesktopResumeRequest) returns (DesktopResumeResponse) {}
+    rpc DesktopSave(DesktopSaveRequest) returns (DesktopSaveResponse) {}
+    rpc DesktopRestore(DesktopRestoreRequest) returns (DesktopRestoreResponse) {}    
     rpc DesktopXMLGet(DesktopXMLGetRequest) returns (DesktopXMLGetResponse) {}
     rpc DesktopList(DesktopListRequest) returns (DesktopListResponse) {}
     rpc DesktopMigrate(DesktopMigrateRequest) returns (DesktopMigrateResponse) {}
@@ -20,17 +25,61 @@ message DesktopStartResponse {
     string xml = 1;
 }
 
+message DesktopStopRequest {
+    string id = 1;
+}
+
+message DesktopStopResponse {}
+
+message DesktopStateRequest {
+    string id = 1;
+}
+
+message DesktopStateResponse {
+    enum DesktopState {
+        DESKTOP_STATE_UNKNOWN = 0;
+        DESKTOP_STATE_STARTED = 1;
+        DESKTOP_STATE_STOPPED = 2;
+        DESKTOP_STATE_STOPPING = 3;
+        DESKTOP_STATE_PAUSED = 4;
+        DESKTOP_STATE_SUSPENDED = 5;
+        DESKTOP_STATE_BLOCKED = 6;
+        DESKTOP_STATE_CRASHED = 7;
+        DESKTOP_STATE_NOSTATE = 8;
+    }
+    DesktopState state = 1;
+}
+
 message DesktopValidateRequest {
     string xml = 1;
 }
 
 message DesktopValidateResponse {}
 
-message DesktopStopRequest {
+message DesktopSuspendRequest {
     string id = 1;
 }
 
-message DesktopStopResponse {}
+message DesktopSuspendResponse {}
+
+message DesktopResumeRequest {
+    string id = 1;
+}
+
+message DesktopResumeResponse {}
+
+message DesktopSaveRequest {
+    string id = 1;
+    string path = 2;
+}
+
+message DesktopSaveResponse {}
+
+message DesktopRestoreRequest {
+    string path = 1;
+}
+
+message DesktopRestoreResponse {}
 
 message DesktopListRequest {}
 

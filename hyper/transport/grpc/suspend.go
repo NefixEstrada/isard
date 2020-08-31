@@ -12,11 +12,10 @@ import (
 	"libvirt.org/libvirt-go"
 )
 
-// DesktopMigrate live migrates a running desktop to another hypervisor
-func (h *HyperServer) DesktopMigrate(ctx context.Context, req *proto.DesktopMigrateRequest) (*proto.DesktopMigrateResponse, error) {
+// DesktopResume resumes a suspended desktop in the hypervisor
+func (h *HyperServer) DesktopSuspend(ctx context.Context, req *proto.DesktopSuspendRequest) (*proto.DesktopSuspendResponse, error) {
 	if err := grpc.Required(grpc.RequiredParams{
-		"id":    req.Id,
-		"hyper": req.Hyper,
+		"id": req.Id,
 	}); err != nil {
 		return nil, err
 	}
@@ -35,9 +34,9 @@ func (h *HyperServer) DesktopMigrate(ctx context.Context, req *proto.DesktopMigr
 	}
 	defer desktop.Free()
 
-	if err := h.hyper.Migrate(desktop, req.Hyper); err != nil {
+	if err := h.hyper.Suspend(desktop); err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
-	return &proto.DesktopMigrateResponse{}, nil
+	return &proto.DesktopSuspendResponse{}, nil
 }

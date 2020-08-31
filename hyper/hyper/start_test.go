@@ -1,6 +1,7 @@
 package hyper_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
@@ -44,13 +45,14 @@ func TestStart(t *testing.T) {
 				assert.Equal(libvirt.DOMAIN_PAUSED, state)
 			},
 		},
-		"should return an error if there's an error creating the desktop": {
-			XML:         "<domain",
-			Opts:        &hyper.StartOptions{},
-			ExpectedErr: "virError(Code=35, Domain=20, Message='(domain_definition):1: Couldn't find end of Start Tag domain line 1\n<domain\n-------^')",
-			ExpectedDesktop: func(desktop *libvirt.Domain) {
-				assert.Nil(desktop)
-			},
+		"should return an error if there's an error starting the desktop": {
+			XML:  "<domain",
+			Opts: &hyper.StartOptions{},
+			ExpectedErr: libvirt.Error{
+				Code:    libvirt.ERR_XML_DETAIL,
+				Domain:  libvirt.ErrorDomain(20),
+				Message: "(domain_definition):1: Couldn't find end of Start Tag domain line 1\n<domain\n-------^",
+			}.Error(),
 		},
 	}
 
@@ -73,11 +75,16 @@ func TestStart(t *testing.T) {
 
 			if tc.ExpectedErr == "" {
 				assert.NoError(err)
+				tc.ExpectedDesktop(desktop)
 			} else {
-				assert.EqualError(err, tc.ExpectedErr)
+				var e libvirt.Error
+				if errors.As(err, &e) {
+					assert.Equal(tc.ExpectedErr, e.Error())
+				} else {
+					assert.EqualError(err, tc.ExpectedErr)
+				}
 			}
 
-			tc.ExpectedDesktop(desktop)
 		})
 	}
 }

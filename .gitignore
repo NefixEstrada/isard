@@ -60,3 +60,9 @@ csv/
 install/.wizard
 
 known_hosts
+
+# binaries
+hyper/cmd/hyper/hyper
+hyper/cmd/hyper-cli/hyper-cli
+desktop-builder/cmd/desktop-builder/desktop-builder
+desktop-builder/cmd/desktop-builder-cli/desktop-builder-cli

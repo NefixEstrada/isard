@@ -29,19 +29,21 @@ func (d *DesktopBuilderServer) ViewerGet(ctx context.Context, req *proto.ViewerG
 	}
 
 	v := &proto.ViewerGetResponse{}
-	for _, s := range viewer.Spice {
+	for _, spice := range viewer.Spice {
 		v.Spice = append(v.Spice, &proto.ViewerGetResponse_Spice{
-			Pwd:     s.Pwd,
-			Port:    int32(s.Port),
-			TlsPort: int32(s.TLSPort),
+			Pwd:             spice.Pwd,
+			Port:            int32(spice.Port),
+			TlsPort:         int32(spice.TLSPort),
+			Passwordvalidto: spice.Passwordvalidto,
 		})
 	}
 
 	for _, vnc := range viewer.VNC {
 		v.Vnc = append(v.Vnc, &proto.ViewerGetResponse_Vnc{
-			Pwd:           vnc.Pwd,
-			Port:          int32(vnc.Port),
-			WebsocketPort: int32(vnc.WebsocketPort),
+			Pwd:             vnc.Pwd,
+			Port:            int32(vnc.Port),
+			WebsocketPort:   int32(vnc.WebsocketPort),
+			Passwordvalidto: vnc.Passwordvalidto,
 		})
 	}
 

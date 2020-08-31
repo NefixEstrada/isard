@@ -11,17 +11,18 @@ import (
 
 // DesktopList returns a list of the desktops running in the hypervisor
 func (h *HyperServer) DesktopList(ctx context.Context, req *proto.DesktopListRequest) (*proto.DesktopListResponse, error) {
-	d, err := h.hyper.List()
+	desktops, err := h.hyper.List()
+
 	if err != nil {
 		return nil, status.Error(codes.Unknown, err.Error())
 	}
 
 	rsp := &proto.DesktopListResponse{}
-	for _, desktop := range d {
+	for _, desktop := range desktops {
 		// TODO: Improve error handling
-		id, err := desktop.GetName()
+		name, err := desktop.GetName()
 		if err == nil {
-			rsp.Ids = append(rsp.Ids, id)
+			rsp.Ids = append(rsp.Ids, name)
 		}
 	}
 

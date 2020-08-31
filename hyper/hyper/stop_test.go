@@ -1,6 +1,7 @@
 package hyper_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
@@ -30,7 +31,11 @@ func TestStop(t *testing.T) {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
 				return &libvirt.Domain{}
 			},
-			ExpectedErr: "virError(Code=7, Domain=6, Message='invalid domain pointer in virDomainDestroy')",
+			ExpectedErr: libvirt.Error{
+				Code:    libvirt.ERR_INVALID_DOMAIN,
+				Domain:  libvirt.ErrorDomain(6),
+				Message: "invalid domain pointer in virDomainDestroy",
+			}.Error(),
 		},
 	}
 
@@ -51,7 +56,12 @@ func TestStop(t *testing.T) {
 			if tc.ExpectedErr == "" {
 				assert.NoError(err)
 			} else {
-				assert.EqualError(err, tc.ExpectedErr)
+				var e libvirt.Error
+				if errors.As(err, &e) {
+					assert.Equal(tc.ExpectedErr, e.Error())
+				} else {
+					assert.EqualError(err, tc.ExpectedErr)
+				}
 			}
 		})
 	}

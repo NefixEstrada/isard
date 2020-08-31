@@ -1,9 +1,11 @@
 package hyper_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
+	"libvirt.org/libvirt-go"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +28,11 @@ func TestList(t *testing.T) {
 				h.Close()
 			},
 			ExpectedDesktopNames: []string{},
-			ExpectedErr:          "virError(Code=6, Domain=20, Message='invalid connection pointer in virConnectListAllDomains')",
+			ExpectedErr: libvirt.Error{
+				Code:    libvirt.ERR_INVALID_CONN,
+				Domain:  libvirt.ErrorDomain(20),
+				Message: "invalid connection pointer in virConnectListAllDomains",
+			}.Error(),
 		},
 	}
 
@@ -46,14 +52,18 @@ func TestList(t *testing.T) {
 			if tc.ExpectedErr == "" {
 				assert.NoError(err)
 			} else {
-				assert.EqualError(err, tc.ExpectedErr)
+				var e libvirt.Error
+				if errors.As(err, &e) {
+					assert.Equal(tc.ExpectedErr, e.Error())
+				} else {
+					assert.EqualError(err, tc.ExpectedErr)
+				}
 			}
 
 			names := []string{}
 			for _, desktop := range desktops {
 				name, err := desktop.GetName()
 				assert.NoError(err)
-
 				names = append(names, name)
 			}
 

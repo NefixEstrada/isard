@@ -2,7 +2,6 @@ package hyper_test
 
 import (
 	"errors"
-	"io/ioutil"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
@@ -12,35 +11,37 @@ import (
 	"libvirt.org/libvirt-go"
 )
 
-func TestXMLGet(t *testing.T) {
+func TestSuspend(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	okCaseXML, err := ioutil.ReadFile("testdata/xml_test-should_return_the_XML_correctly.xml")
-	require.NoError(err)
-
 	cases := map[string]struct {
-		PrepareDesktop func(h *hyper.Hyper) *libvirt.Domain
-		ExpectedXML    string
-		ExpectedErr    string
+		PrepareDesktop  func(h *hyper.Hyper) *libvirt.Domain
+		ExpectedErr     string
+		ExpectedDesktop func(desktop *libvirt.Domain)
 	}{
-		"should return the XML correctly": {
+		"suspend the desktop correctly": {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
-				desktop, err := h.Get("test")
+				desktop, err := h.Start(hyper.TestMinDesktopXML(t), &hyper.StartOptions{})
 				require.NoError(err)
 
 				return desktop
 			},
-			ExpectedXML: string(okCaseXML),
+			ExpectedDesktop: func(desktop *libvirt.Domain) {
+				state, _, err := desktop.GetState()
+
+				assert.NoError(err)
+				assert.Equal(libvirt.DOMAIN_PAUSED, state)
+			},
 		},
-		"should return an error if there's an error getting the XML": {
+		"should return an error if there's an error suspending the desktop": {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
 				return &libvirt.Domain{}
 			},
 			ExpectedErr: libvirt.Error{
 				Code:    libvirt.ERR_INVALID_DOMAIN,
 				Domain:  libvirt.ErrorDomain(6),
-				Message: "invalid domain pointer in virDomainGetXMLDesc",
+				Message: "invalid domain pointer in virDomainSuspend",
 			}.Error(),
 		},
 	}
@@ -57,11 +58,11 @@ func TestXMLGet(t *testing.T) {
 				defer desktop.Free()
 			}
 
-			xml, err := h.XMLGet(desktop)
+			err = h.Suspend(desktop)
 
 			if tc.ExpectedErr == "" {
 				assert.NoError(err)
-				assert.Equal(tc.ExpectedXML, xml)
+				tc.ExpectedDesktop(desktop)
 			} else {
 				var e libvirt.Error
 				if errors.As(err, &e) {

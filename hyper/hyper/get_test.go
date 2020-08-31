@@ -1,6 +1,7 @@
 package hyper_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
@@ -24,7 +25,11 @@ func TestGet(t *testing.T) {
 			ExpectedState: libvirt.DOMAIN_RUNNING,
 		},
 		"should return ErrDesktopNotFound if the desktop doesn't exist": {
-			ExpectedErr: "virError(Code=42, Domain=12, Message='Domain not found')",
+			ExpectedErr: libvirt.Error{
+				Code:    libvirt.ERR_NO_DOMAIN,
+				Domain:  libvirt.ErrorDomain(12),
+				Message: "Domain not found",
+			}.Error(),
 		},
 	}
 
@@ -52,7 +57,12 @@ func TestGet(t *testing.T) {
 			if tc.ExpectedErr == "" {
 				assert.NoError(err)
 			} else {
-				assert.EqualError(err, tc.ExpectedErr)
+				var e libvirt.Error
+				if errors.As(err, &e) {
+					assert.Equal(tc.ExpectedErr, e.Error())
+				} else {
+					assert.EqualError(err, tc.ExpectedErr)
+				}
 			}
 		})
 	}

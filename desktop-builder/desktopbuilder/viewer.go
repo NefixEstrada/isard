@@ -18,15 +18,17 @@ type Viewer struct {
 }
 
 type ViewerSpice struct {
-	Pwd     string
-	Port    int
-	TLSPort int
+	Pwd             string
+	Port            int
+	TLSPort         int
+	Passwordvalidto string
 }
 
 type ViewerVNC struct {
-	Pwd           string
-	Port          int
-	WebsocketPort int
+	Pwd             string
+	Port            int
+	WebsocketPort   int
+	Passwordvalidto string
 }
 
 // ViewerGet returns the viewer options for a desktop
@@ -44,17 +46,19 @@ func (d *DesktopBuilder) ViewerGet(xml string) (*Viewer, error) {
 	for _, g := range desktop.Devices.Graphics {
 		if g.Spice != nil {
 			v.Spice = append(v.Spice, &ViewerSpice{
-				Pwd:     g.Spice.Passwd,
-				Port:    g.Spice.Port,
-				TLSPort: g.Spice.TLSPort,
+				Pwd:             g.Spice.Passwd,
+				Port:            g.Spice.Port,
+				TLSPort:         g.Spice.TLSPort,
+				Passwordvalidto: g.Spice.PasswdValidTo,
 			})
 		}
 
 		if g.VNC != nil {
 			v.VNC = append(v.VNC, &ViewerVNC{
-				Pwd:           g.VNC.Passwd,
-				Port:          g.VNC.Port,
-				WebsocketPort: g.VNC.WebSocket,
+				Pwd:             g.VNC.Passwd,
+				Port:            g.VNC.Port,
+				WebsocketPort:   g.VNC.WebSocket,
+				Passwordvalidto: g.VNC.PasswdValidTo,
 			})
 		}
 	}

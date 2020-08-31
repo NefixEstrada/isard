@@ -24,12 +24,14 @@ message ViewerGetResponse {
     message Spice {
         string pwd = 1;
         int32 port = 2;
-        int32 tls_port = 3;        
+        int32 tls_port = 3;
+        string passwordvalidto = 4;        
     }
     message Vnc {
         string pwd = 1;
         int32 port = 2; 
-        int32 websocket_port = 4;      
+        int32 websocket_port = 3;  
+        string passwordvalidto = 4;    
     }
 
     repeated Spice spice = 1;
