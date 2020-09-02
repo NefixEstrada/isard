@@ -1,14 +1,13 @@
 package hyper_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
-	"libvirt.org/libvirt-go"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"libvirt.org/libvirt-go"
 )
 
 func TestList(t *testing.T) {
@@ -16,23 +15,23 @@ func TestList(t *testing.T) {
 	assert := assert.New(t)
 
 	cases := map[string]struct {
-		PrepareTest          func(h *hyper.Hyper)
-		ExpectedErr          string
-		ExpectedDesktopNames []string
+		PrepareTest      func(h *hyper.Hyper)
+		ExpectedErr      string
+		ExpectedDesktops []string
 	}{
 		"should list the desktops correctly": {
-			ExpectedDesktopNames: []string{"test"},
+			ExpectedDesktops: []string{"test"},
 		},
-		"should return a libvirt error message if there's an error listing the desktops": {
+		"should return an error if there's an error listing the desktops": {
 			PrepareTest: func(h *hyper.Hyper) {
 				h.Close()
 			},
-			ExpectedDesktopNames: []string{},
 			ExpectedErr: libvirt.Error{
 				Code:    libvirt.ERR_INVALID_CONN,
 				Domain:  libvirt.ErrorDomain(20),
 				Message: "invalid connection pointer in virConnectListAllDomains",
 			}.Error(),
+			ExpectedDesktops: []string{},
 		},
 	}
 
@@ -49,25 +48,21 @@ func TestList(t *testing.T) {
 
 			desktops, err := h.List()
 
-			if tc.ExpectedErr == "" {
-				assert.NoError(err)
+			if tc.ExpectedErr != "" {
+				assert.EqualError(err, tc.ExpectedErr)
 			} else {
-				var e libvirt.Error
-				if errors.As(err, &e) {
-					assert.Equal(tc.ExpectedErr, e.Error())
-				} else {
-					assert.EqualError(err, tc.ExpectedErr)
-				}
+				assert.NoError(err)
 			}
 
 			names := []string{}
 			for _, desktop := range desktops {
 				name, err := desktop.GetName()
 				assert.NoError(err)
+
 				names = append(names, name)
 			}
 
-			assert.Equal(tc.ExpectedDesktopNames, names)
+			assert.Equal(tc.ExpectedDesktops, names)
 		})
 	}
 }

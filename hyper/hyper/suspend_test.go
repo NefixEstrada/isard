@@ -1,7 +1,6 @@
 package hyper_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
@@ -16,23 +15,18 @@ func TestSuspend(t *testing.T) {
 	assert := assert.New(t)
 
 	cases := map[string]struct {
-		PrepareDesktop  func(h *hyper.Hyper) *libvirt.Domain
-		ExpectedErr     string
-		ExpectedDesktop func(desktop *libvirt.Domain)
+		PrepareDesktop func(h *hyper.Hyper) *libvirt.Domain
+		ExpectedErr    string
+		ExpectedState  libvirt.DomainState
 	}{
-		"suspend the desktop correctly": {
+		"should suspend the desktop correctly": {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
 				desktop, err := h.Start(hyper.TestMinDesktopXML(t), &hyper.StartOptions{})
 				require.NoError(err)
 
 				return desktop
 			},
-			ExpectedDesktop: func(desktop *libvirt.Domain) {
-				state, _, err := desktop.GetState()
-
-				assert.NoError(err)
-				assert.Equal(libvirt.DOMAIN_PAUSED, state)
-			},
+			ExpectedState: libvirt.DOMAIN_PAUSED,
 		},
 		"should return an error if there's an error suspending the desktop": {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
@@ -60,18 +54,18 @@ func TestSuspend(t *testing.T) {
 
 			err = h.Suspend(desktop)
 
-			if tc.ExpectedErr == "" {
-				assert.NoError(err)
-				tc.ExpectedDesktop(desktop)
+			if tc.ExpectedErr != "" {
+				assert.EqualError(err, tc.ExpectedErr)
 			} else {
-				var e libvirt.Error
-				if errors.As(err, &e) {
-					assert.Equal(tc.ExpectedErr, e.Error())
-				} else {
-					assert.EqualError(err, tc.ExpectedErr)
-				}
+				assert.NoError(err)
 			}
 
+			if tc.ExpectedState != libvirt.DomainState(0) {
+				state, _, err := desktop.GetState()
+				assert.NoError(err)
+
+				assert.Equal(tc.ExpectedState, state)
+			}
 		})
 	}
 }

@@ -1,14 +1,12 @@
 package hyper_test
 
 import (
-	"errors"
 	"testing"
-
-	"libvirt.org/libvirt-go"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
 
 	"github.com/stretchr/testify/assert"
+	"libvirt.org/libvirt-go"
 )
 
 func TestHyperNew(t *testing.T) {
@@ -21,12 +19,11 @@ func TestHyperNew(t *testing.T) {
 		"should create the hypervisor correctly": {},
 		"should return an error if there's an error connecting to the libvirt daemon": {
 			URI: ":::://///",
-			ExpectedErr: libvirt.Error{
+			ExpectedErr: "connect to libvirt: " + libvirt.Error{
 				Code:    libvirt.ERR_INTERNAL_ERROR,
 				Domain:  libvirt.ErrorDomain(45),
 				Message: "internal error: Unable to parse URI :::://///",
 			}.Error(),
-			//ExpectedError: "connect to libvirt: virError(Code=1, Domain=45, Message='internal error: Unable to parse URI :::://///')",
 		},
 	}
 
@@ -37,15 +34,10 @@ func TestHyperNew(t *testing.T) {
 				defer h.Close()
 			}
 
-			if tc.ExpectedErr == "" {
-				assert.NoError(err)
+			if tc.ExpectedErr != "" {
+				assert.EqualError(err, tc.ExpectedErr)
 			} else {
-				var e libvirt.Error
-				if errors.As(err, &e) {
-					assert.Equal(tc.ExpectedErr, e.Error())
-				} else {
-					assert.EqualError(err, tc.ExpectedErr)
-				}
+				assert.NoError(err)
 			}
 		})
 	}

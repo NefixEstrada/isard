@@ -1,7 +1,6 @@
 package hyper_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
@@ -19,7 +18,7 @@ func TestStop(t *testing.T) {
 		PrepareDesktop func(h *hyper.Hyper) *libvirt.Domain
 		ExpectedErr    string
 	}{
-		"stop the desktop correctly": {
+		"should stop the desktop correctly": {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
 				desktop, err := h.Start(hyper.TestMinDesktopXML(t), &hyper.StartOptions{})
 				require.NoError(err)
@@ -53,15 +52,10 @@ func TestStop(t *testing.T) {
 
 			err = h.Stop(desktop)
 
-			if tc.ExpectedErr == "" {
-				assert.NoError(err)
+			if tc.ExpectedErr != "" {
+				assert.EqualError(err, tc.ExpectedErr)
 			} else {
-				var e libvirt.Error
-				if errors.As(err, &e) {
-					assert.Equal(tc.ExpectedErr, e.Error())
-				} else {
-					assert.EqualError(err, tc.ExpectedErr)
-				}
+				assert.NoError(err)
 			}
 		})
 	}

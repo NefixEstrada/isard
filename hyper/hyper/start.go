@@ -10,7 +10,8 @@ type StartOptions struct {
 	Paused bool
 }
 
-// Start starts a new machine using the provided XML
+// Start starts a new machine using the provided XML definition
+// It's a non-persistent desktop from libvirt point of view
 func (h *Hyper) Start(xml string, options *StartOptions) (*libvirt.Domain, error) {
 	flag := libvirt.DOMAIN_NONE
 	if options.Paused {

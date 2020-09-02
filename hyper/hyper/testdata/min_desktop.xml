@@ -1,5 +1,5 @@
 <domain type="%s">
-    <name>isard-test-desktop</name>
+    <name>isard-test-desktop-%d</name>
     <memory unit="G">2</memory>
     <vcpu placement="static">2</vcpu>
     <os>

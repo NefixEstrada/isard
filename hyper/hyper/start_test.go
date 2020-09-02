@@ -1,7 +1,6 @@
 package hyper_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
@@ -18,32 +17,22 @@ func TestStart(t *testing.T) {
 	assert := assert.New(t)
 
 	cases := map[string]struct {
-		XML             string
-		Opts            *hyper.StartOptions
-		RealConn        bool
-		ExpectedErr     string
-		ExpectedDesktop func(desktop *libvirt.Domain)
+		XML           string
+		Opts          *hyper.StartOptions
+		RealConn      bool
+		ExpectedErr   string
+		ExpectedState libvirt.DomainState
 	}{
-		"start the desktop correctly": {
-			XML:  hyper.TestMinDesktopXML(t),
-			Opts: &hyper.StartOptions{},
-			ExpectedDesktop: func(desktop *libvirt.Domain) {
-				state, _, err := desktop.GetState()
-
-				assert.NoError(err)
-				assert.Equal(libvirt.DOMAIN_RUNNING, state)
-			},
+		"should start the desktop correctly": {
+			XML:           hyper.TestMinDesktopXML(t),
+			Opts:          &hyper.StartOptions{},
+			ExpectedState: libvirt.DOMAIN_RUNNING,
 		},
-		"start the desktop paused correcly": {
-			XML:      hyper.TestMinDesktopXML(t, "kvm"),
-			Opts:     &hyper.StartOptions{Paused: true},
-			RealConn: true,
-			ExpectedDesktop: func(desktop *libvirt.Domain) {
-				state, _, err := desktop.GetState()
-
-				assert.NoError(err)
-				assert.Equal(libvirt.DOMAIN_PAUSED, state)
-			},
+		"should start the desktop paused correcly": {
+			XML:           hyper.TestMinDesktopXML(t, "kvm"),
+			Opts:          &hyper.StartOptions{Paused: true},
+			RealConn:      true,
+			ExpectedState: libvirt.DOMAIN_PAUSED,
 		},
 		"should return an error if there's an error starting the desktop": {
 			XML:  "<domain",
@@ -73,18 +62,18 @@ func TestStart(t *testing.T) {
 				defer desktop.Free()
 			}
 
-			if tc.ExpectedErr == "" {
-				assert.NoError(err)
-				tc.ExpectedDesktop(desktop)
+			if tc.ExpectedErr != "" {
+				assert.EqualError(err, tc.ExpectedErr)
 			} else {
-				var e libvirt.Error
-				if errors.As(err, &e) {
-					assert.Equal(tc.ExpectedErr, e.Error())
-				} else {
-					assert.EqualError(err, tc.ExpectedErr)
-				}
+				assert.NoError(err)
 			}
 
+			if tc.ExpectedState != libvirt.DomainState(0) {
+				state, _, err := desktop.GetState()
+				assert.NoError(err)
+
+				assert.Equal(tc.ExpectedState, state)
+			}
 		})
 	}
 }

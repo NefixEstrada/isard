@@ -50,10 +50,10 @@ func TestMigrate(t *testing.T) {
 
 			err = h1.Migrate(desktop, target)
 
-			if tc.ExpectedErr == "" {
-				assert.NoError(err)
-			} else {
+			if tc.ExpectedErr != "" {
 				assert.EqualError(err, tc.ExpectedErr)
+			} else {
+				assert.NoError(err)
 			}
 
 			migratedDesktop, err := h2.Get(name)

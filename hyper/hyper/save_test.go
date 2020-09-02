@@ -1,9 +1,7 @@
 package hyper_test
 
 import (
-	"errors"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,20 +20,20 @@ func TestSave(t *testing.T) {
 	cases := map[string]struct {
 		PrepareDesktop func(h *hyper.Hyper) *libvirt.Domain
 		ExpectedErr    string
-		AfterTest      func(h *hyper.Hyper, desktop_name string, path string)
+		FinalAsserts   func(h *hyper.Hyper, desktop_name string, path string)
 	}{
-		"save the desktop correctly": {
+		"should save the desktop correctly": {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
 				desktop, err := h.Start(hyper.TestMinDesktopXML(t), &hyper.StartOptions{})
 				require.NoError(err)
 
 				return desktop
 			},
-			AfterTest: func(h *hyper.Hyper, desktop_name string, path string) {
+			FinalAsserts: func(h *hyper.Hyper, name string, path string) {
 				err := h.Restore(path)
 				assert.NoError(err)
 
-				desktop, _ := h.Get(desktop_name)
+				desktop, _ := h.Get(name)
 				state, _, err := desktop.GetState()
 				assert.NoError(err)
 
@@ -66,30 +64,26 @@ func TestSave(t *testing.T) {
 				defer desktop.Free()
 			}
 
-			dir, err := ioutil.TempDir("", "isard-test-restore")
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			tmp, err := ioutil.TempDir("", "isard-test-save")
+			require.NoError(err)
 
-			err = h.Save(desktop, filepath.Join(dir, "test.dump"))
+			defer os.RemoveAll(tmp)
 
-			if tc.ExpectedErr == "" {
-				assert.NoError(err)
+			path := filepath.Join(tmp, "desktop.img")
 
-				desktop_name, err := desktop.GetName()
-				assert.NoError(err)
+			err = h.Save(desktop, path)
 
-				tc.AfterTest(h, desktop_name, filepath.Join(dir, "test.dump"))
+			if tc.ExpectedErr != "" {
+				assert.EqualError(err, tc.ExpectedErr)
+
 			} else {
-				var e libvirt.Error
-				if errors.As(err, &e) {
-					assert.Equal(tc.ExpectedErr, e.Error())
-				} else {
-					assert.EqualError(err, tc.ExpectedErr)
-				}
-			}
+				assert.NoError(err)
 
+				name, err := desktop.GetName()
+				assert.NoError(err)
+
+				tc.FinalAsserts(h, name, path)
+			}
 		})
 	}
 }

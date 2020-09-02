@@ -1,18 +1,18 @@
 package hyper_test
 
 import (
-	"errors"
+	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
-	"libvirt.org/libvirt-go"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"libvirt.org/libvirt-go"
 )
 
 func TestRestore(t *testing.T) {
@@ -20,76 +20,43 @@ func TestRestore(t *testing.T) {
 	assert := assert.New(t)
 
 	cases := map[string]struct {
-		PrepareTest     func(h *hyper.Hyper) (string, string)
-		ExpectedErr     string
-		ExpectedDesktop func(desktop *libvirt.Domain)
+		PrepareTest   func(h *hyper.Hyper, path string) string
+		ExpectedErr   string
+		ExpectedState libvirt.DomainState
 	}{
-		"restore the desktop correctly": {
-			PrepareTest: func(h *hyper.Hyper) (string, string) {
+		"should restore the desktop correctly": {
+			PrepareTest: func(h *hyper.Hyper, path string) string {
 				desktop, err := h.Start(hyper.TestMinDesktopXML(t), &hyper.StartOptions{})
 				require.NoError(err)
 
-				desktop_name, err := desktop.GetName()
+				name, err := desktop.GetName()
 				require.NoError(err)
 
-				dir, err := ioutil.TempDir("", "isard-test-restore")
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				path := filepath.Join(dir, "test.dump")
 				err = h.Save(desktop, path)
 				require.NoError(err)
 
-				return desktop_name, path
+				return name
 			},
-			ExpectedDesktop: func(desktop *libvirt.Domain) {
-				state, _, err := desktop.GetState()
-
-				assert.NoError(err)
-				assert.Equal(libvirt.DOMAIN_RUNNING, state)
-			},
+			ExpectedState: libvirt.DOMAIN_RUNNING,
 		},
 		"should return an error as the file is invalid": {
-			PrepareTest: func(h *hyper.Hyper) (string, string) {
-				dir, err := ioutil.TempDir("", "isard-test-restore")
-				if err != nil {
-					log.Fatal(err)
-				}
+			PrepareTest: func(h *hyper.Hyper, path string) string {
+				err := ioutil.WriteFile(path, []byte("invalid file content"), 0755)
+				require.NoError(err)
 
-				path := filepath.Join(dir, "test.dump")
-
-				file, err := os.Create(path)
-				if err != nil {
-					log.Fatalf("failed creating file: %s", err)
-				}
-				defer file.Close()
-
-				_, err = file.WriteString("This will be invalid file content.")
-
-				if err != nil {
-					log.Fatalf("failed writing to file: %s", err)
-				}
-
-				return "", path
+				return ""
 			},
 			ExpectedErr: libvirt.Error{
 				Code:    libvirt.ERR_INTERNAL_ERROR,
 				Domain:  libvirt.ErrorDomain(12),
 				Message: "internal error: mismatched header magic",
 			}.Error(),
-			ExpectedDesktop: func(desktop *libvirt.Domain) {
-				assert.Nil(desktop)
-			},
 		},
 		"should return an error if the path is incorrect or file missing": {
-			PrepareTest: func(h *hyper.Hyper) (string, string) {
-				return "", ""
+			PrepareTest: func(h *hyper.Hyper, path string) string {
+				return ""
 			},
-			ExpectedErr: os.ErrNotExist.Error(),
-			ExpectedDesktop: func(desktop *libvirt.Domain) {
-				assert.Nil(desktop)
-			},
+			ExpectedErr: "stat %s: no such file or directory",
 		},
 	}
 
@@ -100,24 +67,36 @@ func TestRestore(t *testing.T) {
 
 			defer h.Close()
 
-			desktop_name, path := tc.PrepareTest(h)
-			defer os.RemoveAll(path)
+			tmp, err := ioutil.TempDir("", "isard-test-restore")
+			require.NoError(err)
+
+			defer os.RemoveAll(tmp)
+
+			path := filepath.Join(tmp, "desktop.img")
+			desktopName := tc.PrepareTest(h, path)
 
 			err = h.Restore(path)
 
-			if tc.ExpectedErr == "" {
-				assert.NoError(err)
-				desktop, _ := h.Get(desktop_name)
-				tc.ExpectedDesktop(desktop)
-			} else {
-				var e libvirt.Error
-				if errors.As(err, &e) {
-					assert.Equal(tc.ExpectedErr, e.Error())
-				} else {
-					assert.EqualError(err, tc.ExpectedErr)
+			if tc.ExpectedErr != "" {
+				if strings.Contains(tc.ExpectedErr, "%") {
+					tc.ExpectedErr = fmt.Sprintf(tc.ExpectedErr, path)
 				}
+
+				assert.EqualError(err, tc.ExpectedErr)
+
+			} else {
+				assert.NoError(err)
 			}
 
+			if tc.ExpectedState != libvirt.DomainState(0) {
+				desktop, err := h.Get(desktopName)
+				assert.NoError(err)
+
+				state, _, err := desktop.GetState()
+				assert.NoError(err)
+
+				assert.Equal(tc.ExpectedState, state)
+			}
 		})
 	}
 }

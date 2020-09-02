@@ -6,7 +6,7 @@ import (
 	"libvirt.org/libvirt-go"
 )
 
-// Migrate live migrates a running desktop to another hypervisor
+// Migrate migrates a running desktop to another hypervisor using PEER2PEER method
 func (h *Hyper) Migrate(d *libvirt.Domain, hyperURI string) error {
 	name, err := d.GetName()
 	if err != nil {

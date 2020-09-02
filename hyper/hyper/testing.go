@@ -3,12 +3,18 @@ package hyper
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"libvirt.org/libvirt-go"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 // TestLibvirtDriver returns the URI connection for libvirt using the test driver and the defaults located at `testdata/test_default_conn.xml`
 func TestLibvirtDriver(t *testing.T) string {
@@ -36,7 +42,9 @@ func TestMinDesktopXML(t *testing.T, domTypes ...string) string {
 		return ""
 	}
 
-	return fmt.Sprintf(string(minDesktop), domType)
+	name := fmt.Sprintf("isard-test-desktop-%d", rand.Intn(9999))
+
+	return fmt.Sprintf(string(minDesktop), domType, name)
 }
 
 // TestDesktopsCleanup removes all the desktops that have been created for testing Isard in the qemu:///system libvirt daemon (used for functions not supported by the test driver)

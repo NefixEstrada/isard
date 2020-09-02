@@ -25,8 +25,7 @@ func main() {
 
 	env := &env.Env{
 		Sugar: sugar,
-
-		Cfg: cfg.Init(sugar),
+		Cfg:   cfg.Init(sugar),
 	}
 
 	h, err := hyper.New(env, "")

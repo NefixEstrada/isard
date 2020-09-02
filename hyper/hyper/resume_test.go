@@ -1,7 +1,6 @@
 package hyper_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/isard-vdi/isard/hyper/hyper"
@@ -12,17 +11,20 @@ import (
 )
 
 func TestResume(t *testing.T) {
+	defer hyper.TestDesktopsCleanup(t)
+
 	require := require.New(t)
 	assert := assert.New(t)
 
 	cases := map[string]struct {
-		PrepareDesktop  func(h *hyper.Hyper) *libvirt.Domain
-		ExpectedErr     string
-		ExpectedDesktop func(desktop *libvirt.Domain)
+		PrepareDesktop func(h *hyper.Hyper) *libvirt.Domain
+		RealConn       bool
+		ExpectedErr    string
+		ExpectedState  libvirt.DomainState
 	}{
-		"resume the desktop correctly": {
+		"should resume the desktop correctly": {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
-				desktop, err := h.Start(hyper.TestMinDesktopXML(t), &hyper.StartOptions{})
+				desktop, err := h.Start(hyper.TestMinDesktopXML(t, "kvm"), &hyper.StartOptions{Paused: true})
 				require.NoError(err)
 
 				err = h.Suspend(desktop)
@@ -30,12 +32,8 @@ func TestResume(t *testing.T) {
 
 				return desktop
 			},
-			ExpectedDesktop: func(desktop *libvirt.Domain) {
-				state, _, err := desktop.GetState()
-
-				assert.NoError(err)
-				assert.Equal(libvirt.DOMAIN_RUNNING, state)
-			},
+			RealConn:      true,
+			ExpectedState: libvirt.DOMAIN_RUNNING,
 		},
 		"should return an error if there's an error resuming the desktop": {
 			PrepareDesktop: func(h *hyper.Hyper) *libvirt.Domain {
@@ -51,7 +49,12 @@ func TestResume(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			h, err := hyper.New(nil, hyper.TestLibvirtDriver(t))
+			var conn string
+			if !tc.RealConn {
+				conn = hyper.TestLibvirtDriver(t)
+			}
+
+			h, err := hyper.New(nil, conn)
 			require.NoError(err)
 
 			defer h.Close()
@@ -63,18 +66,18 @@ func TestResume(t *testing.T) {
 
 			err = h.Resume(desktop)
 
-			if tc.ExpectedErr == "" {
-				assert.NoError(err)
-				tc.ExpectedDesktop(desktop)
+			if tc.ExpectedErr != "" {
+				assert.EqualError(err, tc.ExpectedErr)
 			} else {
-				var e libvirt.Error
-				if errors.As(err, &e) {
-					assert.Equal(tc.ExpectedErr, e.Error())
-				} else {
-					assert.EqualError(err, tc.ExpectedErr)
-				}
+				assert.NoError(err)
 			}
 
+			if tc.ExpectedState != libvirt.DomainState(0) {
+				state, _, err := desktop.GetState()
+				assert.NoError(err)
+
+				assert.Equal(tc.ExpectedState, state)
+			}
 		})
 	}
 }
